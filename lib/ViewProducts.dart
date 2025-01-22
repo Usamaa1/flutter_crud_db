@@ -99,11 +99,28 @@ class _ViewProductsState extends State<ViewProducts> {
               itemCount: product.length,
               itemBuilder: (context, index) {
                 return ListTile(
-                  trailing: IconButton(
-                      onPressed: () {
-                        deleteItem(product[index].id);
-                      },
-                      icon: Icon(Icons.delete)),
+                  
+                   trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: () async {
+                          String productId = product[index].id; // Get the document ID
+                          await deleteProduct(productId);
+                        },
+                        icon: Icon(Icons.delete),
+                      ),
+                      IconButton(
+                        onPressed: () async {
+                          String productId = product[index].id; // Get the document ID
+                          String currentName = product[index]["name"];
+                          double currentPrice = product[index]["price"];
+                          await updateProduct(productId, currentName, currentPrice);
+                        },
+                        icon: Icon(Icons.edit),
+                      ),
+                    ],
+                  ),
                   title: Text(product[index]["name"]),
                   subtitle: Text(product[index]["price"].toString()),
                 );
