@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dbapp/AddProducts.dart';
 import 'package:flutter/material.dart';
 
 class ViewProducts extends StatefulWidget {
@@ -11,6 +12,26 @@ class ViewProducts extends StatefulWidget {
 class _ViewProductsState extends State<ViewProducts> {
   final Stream products =
       FirebaseFirestore.instance.collection("products").snapshots();
+  final favInstance = FirebaseFirestore.instance.collection("favourites");
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    fetchUserFavourite();
+  }
+
+  final userFavouriteProducts = [];
+
+  Future<void> fetchUserFavourite() async {
+    final favSnapshot = await favInstance.where("userId", isEqualTo: 1).get();
+    // print(favSnapshot.docs);
+    // userFavouriteProducts = favSnapshot.docs.map((doc) => doc["productId"] as String).toSet();
+    // print(userFavouriteProducts);
+    favSnapshot.docs
+        .forEach((doc) => userFavouriteProducts.add(doc["productId"]));
+    print(userFavouriteProducts);
+  }
 
   Future<void> deleteItem(prodId) async {
     try {
@@ -85,6 +106,19 @@ class _ViewProductsState extends State<ViewProducts> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(),
+      drawer: Drawer(
+          child: Column(
+        children: [
+          ListTile(
+            title: Text("Add Products"),
+            onTap: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => Addproducts()));
+            },
+          ),
+        ],
+      )),
       body: StreamBuilder(
           stream: products,
           builder: (context, snapshot) {
@@ -99,28 +133,47 @@ class _ViewProductsState extends State<ViewProducts> {
               itemCount: product.length,
               itemBuilder: (context, index) {
                 return ListTile(
-                  
-                   trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: () async {
-                          String productId = product[index].id; // Get the document ID
-                          await deleteProduct(productId);
-                        },
-                        icon: Icon(Icons.delete),
-                      ),
-                      IconButton(
-                        onPressed: () async {
-                          String productId = product[index].id; // Get the document ID
-                          String currentName = product[index]["name"];
-                          double currentPrice = product[index]["price"];
-                          await updateProduct(productId, currentName, currentPrice);
-                        },
-                        icon: Icon(Icons.edit),
-                      ),
-                    ],
+                  leading: IconButton(
+                    onPressed: () async {
+                      if (userFavouriteProducts.contains(product[index].id)) {
+                        final singleFavInstance = await favInstance
+                            .where("productId", isEqualTo: product[index].id)
+                            .where("userId", isEqualTo: 1)
+                            .get();
+
+                        print(singleFavInstance);
+                        print("hello");
+                        print(singleFavInstance.docs.first.id);
+                        var id = singleFavInstance.docs.first.id;
+
+                        await favInstance.doc(id).delete();
+                        setState(() {
+                          userFavouriteProducts.remove(product[index].id);
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text("Item removed from Favorites")));
+                      } else {
+                        await favInstance.add({
+                          "productId": product[index].id,
+                          "userId": 1,
+                        });
+                        setState(() {
+                          userFavouriteProducts.add(product[index].id);
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Item added to favorites")));
+                      }
+                    },
+                    icon: Icon(Icons.favorite,
+                        color: userFavouriteProducts.contains(product[index].id)
+                            ? Colors.redAccent
+                            : null),
                   ),
+                  trailing: IconButton(
+                      onPressed: () {
+                        deleteItem(product[index].id);
+                      },
+                      icon: Icon(Icons.delete)),
                   title: Text(product[index]["name"]),
                   subtitle: Text(product[index]["price"].toString()),
                 );
